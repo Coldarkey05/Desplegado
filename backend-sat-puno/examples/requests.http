@@ -1,0 +1,75 @@
+### Variables (VS Code REST Client): sustituye valores solo en tu copia local
+@api = http://localhost:3000/api
+@token = PON_TOKEN_AQUI
+@device = PON_CLAVE_KIOSCO_AQUI
+
+### Login
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{"nombre_usuario":"admin","password":"TU_PASSWORD"}
+
+### Seleccionar rol (usar el token devuelto en las peticiones siguientes)
+POST {{api}}/auth/seleccionar-rol
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"rol":"Admin"}
+
+### Catálogo
+GET {{api}}/admin/servicios
+Authorization: Bearer {{token}}
+
+### Emitir (conserva UUID en reintentos; cámbialo al emitir una operación nueva)
+POST {{api}}/turnos
+X-Device-Key: {{device}}
+Content-Type: application/json
+
+{"dni":"12345678","id_servicio":1,"solicitud_id":"f6c7808e-d937-4ea2-8ca2-39b66aad68f8"}
+
+### Abrir módulo propio con token operativo
+POST {{api}}/ventanilla/abrir
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### Consultar propio módulo
+GET {{api}}/ventanilla
+Authorization: Bearer {{token}}
+
+### Finalizar
+POST {{api}}/turnos/1/finalizar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### Derivar
+POST {{api}}/turnos/1/derivar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"id_servicio_destino":2,"motivo":"Continuar en caja"}
+
+### Reporte
+GET {{api}}/admin/reportes?desde=2026-09-01&hasta=2026-09-30
+Authorization: Bearer {{token}}
+
+### V5: asignar varios servicios al módulo propio (ventanilla.asignacion)
+PATCH {{api}}/ventanilla/asignacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"id_modulo":1,"servicios_ids":[1,2]}
+
+### Configuración TV (pantalla.gestionar); copiar revision antes de editar
+GET {{api}}/pantalla/configuracion
+Authorization: Bearer {{token}}
+
+### Aplicar anuncio y modo; usar la revision devuelta por GET
+PATCH {{api}}/pantalla/configuracion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"modo":"turnos","video_url":"","video_expandido":false,"anuncio":"Bienvenidos a SAT Puno","anuncio_desplazable":true,"revision":1}

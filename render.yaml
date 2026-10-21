@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: sat-puno-colas
+    runtime: node
+    numInstances: 1
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: KIOSK_API_KEY
+        generateValue: true
+      - key: DISPLAY_API_KEY
+        generateValue: true
+      - key: ATTENTION_MODE
+        value: confirmacion
+      - key: ENABLE_SWAGGER
+        value: "false"

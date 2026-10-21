@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model servicios {
+  habilitaciones modulos_servicios[]
+  id_servicio                                              Int            @id @default(autoincrement())
+  nombre_servicio                                          String         @unique @db.VarChar(100)
+  descripcion                                              String?        @db.VarChar(255)
+  activo                                                   Boolean?       @default(true)
+  derivaciones_derivaciones_id_servicio_destinoToservicios derivaciones[] @relation("derivaciones_id_servicio_destinoToservicios")
+  derivaciones_derivaciones_id_servicio_origenToservicios  derivaciones[] @relation("derivaciones_id_servicio_origenToservicios")
+  modulos                                                  modulos[]
+  turnos                                                   turnos[]
+}
+
+model modulos {
+  habilitaciones modulos_servicios[]
+  atencion_automatica Boolean @default(true)
+  orden_ultima_asignacion BigInt @default(0)
+  id_modulo                                            Int            @id @default(autoincrement())
+  numero_modulo                                        String         @unique @db.VarChar(20)
+  estado                                               String?        @default("Cerrado") @db.VarChar(20)
+  id_servicio_principal                                Int?
+  derivaciones_derivaciones_id_modulo_destinoTomodulos derivaciones[] @relation("derivaciones_id_modulo_destinoTomodulos")
+  derivaciones_derivaciones_id_modulo_origenTomodulos  derivaciones[] @relation("derivaciones_id_modulo_origenTomodulos")
+  servicios                                            servicios?     @relation(fields: [id_servicio_principal], references: [id_servicio], onUpdate: NoAction)
+  turnos_turnos_id_modulo_atencionTomodulos            turnos[]       @relation("turnos_id_modulo_atencionTomodulos")
+  turnos_turnos_id_modulo_destinoTomodulos             turnos[]       @relation("turnos_id_modulo_destinoTomodulos")
+  usuarios                                             usuarios[]
+}
+
+model usuarios {
+  id_usuario         Int      @id @default(autoincrement())
+  dni                String   @unique @db.VarChar(8)
+  nombres            String   @db.VarChar(100)
+  apellidos          String   @db.VarChar(100)
+  nombre_usuario String @unique @db.VarChar(50)
+  contrasena_hash String @db.VarChar(255)
+  correo String? @db.VarChar(100)
+  rol_sistema String @default("Usuario") @db.VarChar(30)
+  fecha_creacion DateTime? @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  ultimo_acceso DateTime? @db.Timestamp(6)
+  version_token Int @default(1)
+  id_creador Int?
+  nivel_admin Int?
+  roles usuarios_roles[]
+  retiro_pendiente Boolean @default(false)
+  id_modulo_asignado Int?
+  activo             Boolean? @default(true)
+  turnos             turnos[]
+  modulos            modulos? @relation(fields: [id_modulo_asignado], references: [id_modulo], onUpdate: NoAction)
+}
+
+model contribuyentes {
+  id_contribuyente    Int              @id @default(autoincrement())
+  dni                 String           @unique @db.VarChar(8)
+  nombres             String           @db.VarChar(100)
+  apellidos           String           @db.VarChar(100)
+  es_preferencial     Boolean?         @default(false)
+  id_tipo_preferencia Int              @default(1)
+  fecha_registro      DateTime?        @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  tipospreferencia    tipospreferencia @relation(fields: [id_tipo_preferencia], references: [id_tipo_preferencia], onDelete: NoAction, onUpdate: NoAction, map: "fk_contribuyente_tipo_preferencia")
+  turnos              turnos[]
+}
+
+model tipospreferencia {
+  id_tipo_preferencia Int              @id @default(autoincrement())
+  nombre_tipo         String           @unique @db.VarChar(50)
+  prioridad           Int              @default(1)
+  contribuyentes      contribuyentes[]
+}
+
+
+model turnos {
+  id_modulo_excluido Int?
+  id_turno                                   Int                @id @default(autoincrement())
+  codigo_ticket                              String             @db.VarChar(10)
+  id_contribuyente                           Int?
+  id_servicio                                Int
+  id_modulo_atencion                         Int?
+  id_usuario_atencion                        Int?
+  fecha_hora_emision                         DateTime?          @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  fecha_hora_llamado                         DateTime?          @db.Timestamp(6)
+  fecha_hora_inicio_atencion                 DateTime?          @db.Timestamp(6)
+  fecha_hora_fin_atencion                    DateTime?          @db.Timestamp(6)
+  estado                                     String?            @default("GENERADO") @db.VarChar(20)
+  intentos_llamado                           Int?               @default(0)
+  fecha_jornada                              DateTime           @db.Date
+  prioridad                                  Int                @default(0)
+  fecha_cola                                 DateTime           @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  id_modulo_destino                          Int?
+  solicitud_id                               String?            @unique @db.Uuid
+  motivo_cierre                              String?            @db.VarChar(255)
+  derivaciones                               derivaciones[]
+  historial_turnos                           historial_turnos[]
+  contribuyentes                             contribuyentes?    @relation(fields: [id_contribuyente], references: [id_contribuyente], onUpdate: NoAction)
+  modulos_turnos_id_modulo_atencionTomodulos modulos?           @relation("turnos_id_modulo_atencionTomodulos", fields: [id_modulo_atencion], references: [id_modulo], onUpdate: NoAction)
+  modulos_turnos_id_modulo_destinoTomodulos  modulos?           @relation("turnos_id_modulo_destinoTomodulos", fields: [id_modulo_destino], references: [id_modulo], onDelete: Restrict, onUpdate: NoAction)
+  servicios                                  servicios          @relation(fields: [id_servicio], references: [id_servicio], onUpdate: NoAction)
+  usuarios                                   usuarios?          @relation(fields: [id_usuario_atencion], references: [id_usuario], onUpdate: NoAction)
+
+  @@unique([fecha_jornada, codigo_ticket], map: "uq_ticket_jornada")
+  @@index([codigo_ticket], map: "idx_turno_codigo")
+  @@index([estado], map: "idx_turno_estado")
+  @@index([fecha_hora_emision], map: "idx_turno_fecha")
+  @@index([id_servicio, estado, fecha_cola], map: "idx_cola_seleccion")
+}
+
+model derivaciones {
+  id_derivacion                                         Int        @id @default(autoincrement())
+  id_turno                                              Int
+  id_modulo_origen                                      Int
+  id_modulo_destino                                     Int
+  fecha_hora_derivacion                                 DateTime?  @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  motivo                                                String?    @db.VarChar(255)
+  id_servicio_origen                                    Int?
+  id_servicio_destino                                   Int?
+  modulos_derivaciones_id_modulo_destinoTomodulos       modulos    @relation("derivaciones_id_modulo_destinoTomodulos", fields: [id_modulo_destino], references: [id_modulo], onUpdate: NoAction)
+  modulos_derivaciones_id_modulo_origenTomodulos        modulos    @relation("derivaciones_id_modulo_origenTomodulos", fields: [id_modulo_origen], references: [id_modulo], onUpdate: NoAction)
+  servicios_derivaciones_id_servicio_destinoToservicios servicios? @relation("derivaciones_id_servicio_destinoToservicios", fields: [id_servicio_destino], references: [id_servicio], onDelete: Restrict, onUpdate: NoAction)
+  servicios_derivaciones_id_servicio_origenToservicios  servicios? @relation("derivaciones_id_servicio_origenToservicios", fields: [id_servicio_origen], references: [id_servicio], onDelete: Restrict, onUpdate: NoAction)
+  turnos                                                turnos     @relation(fields: [id_turno], references: [id_turno], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model contadores_ticket {
+  fecha   DateTime @db.Date
+  prefijo String   @db.VarChar(1)
+  valor   Int
+
+  @@id([fecha, prefijo])
+}
+
+model auditoria {
+  id            BigInt   @id @default(autoincrement())
+  fecha         DateTime @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  id_usuario Int?
+  accion        String   @db.VarChar(60)
+  entidad       String   @db.VarChar(40)
+  entidad_id    Int?
+  detalle       Json     @default("{}")
+
+  @@index([fecha], map: "idx_auditoria_fecha")
+}
+
+model historial_turnos {
+  id          BigInt   @id @default(autoincrement())
+  id_turno    Int
+  fecha       DateTime @default(dbgenerated("(clock_timestamp() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+  estado      String   @db.VarChar(20)
+  id_servicio Int
+  id_modulo   Int?
+  id_usuario  Int?
+  detalle     String?  @db.VarChar(255)
+  turnos      turnos   @relation(fields: [id_turno], references: [id_turno], onUpdate: NoAction)
+
+  @@index([id_turno, fecha], map: "idx_historial_turno")
+}
+
+model usuarios_roles {
+  id_usuario Int
+  rol String @db.VarChar(30)
+  usuario usuarios @relation(fields: [id_usuario], references: [id_usuario], onDelete: Cascade)
+  @@id([id_usuario, rol])
+}
+
+model roles {
+ id_rol Int @id @default(autoincrement())
+ codigo String @unique @db.VarChar(30)
+ nombre String @db.VarChar(80)
+ descripcion String? @db.VarChar(255)
+ es_sistema Boolean @default(false)
+ activo Boolean @default(true)
+ fecha_creacion DateTime @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6)
+}
+model permisos {
+ id_permiso Int @id @default(autoincrement())
+ codigo String @unique @db.VarChar(80)
+ nombre String @db.VarChar(100)
+ descripcion String? @db.VarChar(255)
+}
+model roles_permisos {
+ id_rol Int
+ id_permiso Int
+ @@id([id_rol,id_permiso])
+}
+
+model modulos_servicios {
+ id_modulo Int
+ id_servicio Int
+ modulo modulos @relation(fields:[id_modulo],references:[id_modulo],onDelete:Cascade,onUpdate:NoAction)
+ servicio servicios @relation(fields:[id_servicio],references:[id_servicio],onDelete:Restrict,onUpdate:NoAction)
+ @@id([id_modulo,id_servicio])
+ @@index([id_servicio,id_modulo],map:"idx_modulos_servicios_servicio")
+}
+model configuracion_pantalla {
+ id Int @id @default(1)
+ modo String @default("turnos") @db.VarChar(10)
+ video_url String @default("") @db.VarChar(2048)
+ video_expandido Boolean @default(false)
+ anuncio String @default("Mantén tu ticket a la mano · Verifica tu número · Acércate a la ventanilla indicada") @db.VarChar(1000)
+ anuncio_desplazable Boolean @default(true)
+ revision Int @default(1)
+}

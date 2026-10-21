@@ -1,0 +1,14 @@
+{
+  "name": "sat-puno-render",
+  "version": "6.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/start.mjs",
+    "db:check": "npm --prefix backend-sat-puno run db:check",
+    "db:seed": "npm --prefix backend-sat-puno run db:seed"
+  }
+}
